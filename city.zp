@@ -1,0 +1,95 @@
+(module "city"
+  (export
+    `("new" ,new)
+    `("EBUSHELS" ,EBUSHELS)
+    `("ESTARVED" ,ESTARVED)
+    `("EACREAGE" ,EACREAGE)
+    `("EPOP" ,EPOP)
+    `("error?" ,error?)
+    `("step" ,step))
+
+  (new (lambda ()
+    (make-hash :population 95
+               :starved 0
+               :migrated 5
+               :bushels 2800
+               :acres 1000
+               :yield 3
+               :pests 200
+               :val (trade)
+               :avg-starved 0
+               :died 0
+               :fed 0
+               :planted 0)))
+
+  (error? number?)
+
+  (EBUSHELS 0)
+  (ESTARVED 1)
+  (EACREAGE 2)
+  (EPOP     3)
+
+  (trade (lambda () (+ 17 (randint 10))))
+
+  (add-migrants (lambda (city)
+    (let ((ncity (hash:update city :population (curry + (city :migrated)))))
+      (hash:set city :migrated 0))))
+
+  (rats (lambda (city)
+    (hash:set city :pests (/ (city :bushels) (+ (randint 5) 2)))))
+
+  (plague (lambda (city)
+    (let* ((died (/ (city :population) (+ (randint 4) 2)))
+           (city (hash:update city :died (curry + died))))
+      (hash:update city :population ($ (- % died))))))
+
+  (starvation (lambda (city)
+    (let ((starved (- (city :population) (/ (city :fed) 20))))
+      (hash:set city :starved starved))))
+
+  (births (lambda (city)
+    (hash:update city :population ($ (* % (- 1 (/ pop 6000)))))))
+
+  (step (lambda (city)
+    (let ((city (starvation city)))
+      (if (> (city :starved) (* (city :population) 0.45))
+        ESTARVED
+        (let* ((city (hash:update city :avg-starved ($ (+ (* 0.1 died)
+                                                          (* 0.9 %)))))
+               (city (if (eq? 0 (randint 15)) (plague city) city))
+               (city (births city))
+               (city (hash:set city :migrated
+                               (* 0.1 (randint (city :population)))))
+               (city (hash:set city :val (trade)))
+               (city (hash:set city :yield (add1 (randint 10))))
+               (city (hash:update city :bushels (* (city :yield)
+                                                   (city :planted)))))
+          (rats city))))))
+
+  (buy-acres (lambda (city amnt)
+    (let ((price (* (city :val) amnt)))
+      (if (> prive (city :bushels))
+        EBUSHELS
+        (let ((city (hash:update city :bushels ($ (- % price)))))
+          (hash:update city :acres (curry + amnt)))))))
+
+  (sell-acres (lambda (city amnt)
+    (if (> amnt (city :acres))
+      EACREAGE
+      (let ((city (hash:update city :bushels (curry + (* (city :val) amnt)))))
+        (hash:update city :acres ($ (- % amnt)))))))
+
+  (feed-populace (lambda (city amnt)
+    (if (>= amnt (city :bushels))
+      EBUSHELS
+      (let ((city (hash:update city :bushels ($ (- % amnt)))))
+        (hash:set city :fed amnt)))))
+
+  (plant-seed (lambda (city amnt)
+    (cond
+      ((> amnt (city :acres)) EACREAGE)
+      ((> amnt (city :bushels)) EBUSHELS)
+      ((> amnt (* 10 (city :population))) EPOP)
+      (else
+        (let ((city (hash:update city :bushels ($ (- % amnt)))))
+          (hash:set city :planted amnt)))))))
