@@ -150,24 +150,23 @@
                   ((= plt 0) (nil))
                   (else
                     (case (city:plant-seed city plt)
-                      ((city:EACREAGE)
+                      ((2)
                         (begin
                           (write (++ "Hamurabi: Think again. You have only "
                                      (->string (city :acres)) " acres. Now then, "))
-                          (plant-seed (reline (plant-str)))))
-                      ((city:EPOP)
+                          (plant-seed (reline plant-str))))
+                      ((3)
                         (begin
                           (write (++ "But you only have "
                                      (->string (city :population))
                                      " people to tend the fields. Now then, "))
-                          (plant-seed (reline (plant-str)))))
-                      ((city:EBUSHELS)
+                          (plant-seed (reline plant-str))))
+                      ((0)
                         (begin
                           (write (++ "Hamurabi: Think again. We only have "
                                      (->string (city :bushels))
                                      " bushels. Now then, "))
-                          (plant-seed (reline (plant-str)))))
-                      ((city:ESTARVED) (nil))
+                          (plant-seed (reline plant-str))))
                       (else => ($ (set! city %)))))))))
 
       (let ((res (city:step city)))
