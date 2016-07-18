@@ -1,4 +1,4 @@
-(load "city")
+(load "hamurabi/city")
 (load "readline")
 
 (import-all "city")
