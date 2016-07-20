@@ -12,6 +12,7 @@
     `("plant-seed" ,plant-seed)
     `("plague" ,plague)
     `("error?" ,error?)
+    `("starved?" ,starved?)
     `("step" ,step))
 
   (new (lambda ()
@@ -56,10 +57,13 @@
   (births (lambda (city)
     (hash:update city :population ($ (* % (- 1 (/ % 6000)))))))
 
+  (starved? (lambda (city)
+      (> (city :starved) (* (city :population) 0.45))))
+
   (step (lambda (city)
     (let ((city (starvation city)))
       (if (> (city :starved) (* (city :population) 0.45))
-        ESTARVED
+        city
         (let* ((city (hash:update city :avg-starved ($ (+ (* 0.1 (city :died))
                                                           (* 0.9 %)))))
                (city (if (eq? 0 (randint 15)) (plague city) city))

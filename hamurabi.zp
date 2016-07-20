@@ -170,9 +170,9 @@
                       (else => ($ (set! city %)))))))))
 
       (let ((res (city:step city)))
-        (if (eq? city:ESTARVED res)
+        (if (city:starved? res)
           (begin
-            (write (++ "You starved " (->string (city :starved)) " people in one year!!!"))
+            (write (++ "You starved " (->string (res :starved)) " people in one year!!!"))
             (ejected))
           (loop res (add1 year)))))))
 
