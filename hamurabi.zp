@@ -4,35 +4,28 @@
 (import-all "city")
 (define rl (import "readline:readline"))
 
-(define-syntax defmult
-  (syntax-rules ()
-    ((_ nargs body ...)
-      (define nargs (begin body ...)))
-    ((_ nargs doc body ...)
-      (define nargs doc (begin body ...)))))
-
-(defmult (retire)
+(define (retire)
   (write "So long for now.")
   (exit 0))
 
-(defmult (storm-out)
+(define (storm-out)
   (write "Hamurabi: I cannot do what you wish.")
   (write "Get yourself another steward!!!!!")
   (retire))
 
-(defmult (ejected)
+(define (ejected)
   (write "Due to this extreme mismanagement you have not only")
   (write "been impeached and thrown out of office but you have")
   (write "also been declared 'National Fink' !!")
   (retire))
 
-(defmult (nero-end)
+(define (nero-end)
   (write "Your heavy handed performance smacks of Nero and Ivan IV.")
   (write "The people (remaining) find you an unpleasant ruler, and,")
   (write "frankly, hate your guts!")
   (retire))
 
-(defmult (not-so-bad-end city)
+(define (not-so-bad-end city)
   (write "Your performance could have been somewhat better, but")
   (display "really wasn't too bad at all. ")
   (write (++ (->string (rand-int (city :population))) " people would "))
@@ -42,25 +35,23 @@
 
 (define (game-end city)
   (let* ((l (/ (city :acres) (city :population)))
-         (check (lambda (s lc) (or (> (cty :avg-starved) s) (< l lc)))))
-    (begin
-      (write (++ "In your 10-year term of office " (->string (city :avg-starved))
-                 " percent of the"))
-      (write "population starved per year on average, i.e., a total of")
-      (write (++ (->string (city :died)) " people died!!"))
-      (write "You starded with 10 acres per person and ended with")
-      (write (++ (->string l) " acres per person.\n"))
-      (cond
-        ((check 33  7) (ejected))
-        ((check 10  9) (nero-end))
-        ((check  3 10) (not-so-bad-end city))))))
+         (check (lambda (s lc) (or (> (city :avg-starved) s) (< l lc)))))
+    (write (++ "In your 10-year term of office " (->string (city :avg-starved))
+               " percent of the"))
+    (write "population starved per year on average, i.e., a total of")
+    (write (++ (->string (city :died)) " people died!!"))
+    (write "You started with 10 acres per person and ended with")
+    (write (++ (->string l) " acres per person.\n"))
+    (cond
+      ((check 33  7) (ejected))
+      ((check 10  9) (nero-end))
+      ((check  3 10) (not-so-bad-end city)))))
 
-(defmult (reline prompt)
+(define (reline prompt)
   (if (in? prompt #\newline)
     (let ((split (string:split prompt #\newline)))
-      (begin
-        (write (string:join (list:but-last split) #\newline))
-        (set! prompt (list:last split)))))
+      (write (string:join (list:but-last split) #\newline))
+      (set! prompt (list:last split))))
   (let loop ((inp (rl prompt)))
     (if (or (string:empty? inp) (not (string:num? inp)))
       (begin
@@ -70,110 +61,105 @@
 
 ; this is fairly imperative, because i'm lazy and the reference
 ; implementation was in C
-(defmult (main)
+(define (main)
   (write "Try your hand at governing Ancient Sumeria")
   (write "successfully for a 10 year term of office.\n")
 
   (let loop ((city (city:new))
              (year 0))
-    (begin
-      (if (= year 10)
-        (game-end city))
+    (if (= year 10)
+      (game-end city))
 
-      (write "Hamurabi: I beg to report to you,")
-      (display (++ "in year " (->string year) " "))
-      (display (++ (->string (city :starved)) " people starved and "))
-      (write (++ (->string (city :migrated)) " came to the city.\n"))
+    (write "Hamurabi: I beg to report to you,")
+    (display (++ "in year " (->string year) " "))
+    (display (++ (->string (city :starved)) " people starved and "))
+    (write (++ (->string (city :migrated)) " came to the city.\n"))
 
-      (set! city (city:add-migrants city))
+    (set! city (city:add-migrants city))
 
-      (if (= 1 (randint 2))
+    (if (= 1 (randint 2))
+      (begin
+        (write "A horrible plague struck! Many people have died!")
+        (set! city (city:plague city))))
+
+    (write (++ "\nPopulation is now " (->string (city :population)) "."))
+    (write (++ "The city now owns " (->string (city :acres)) " acres."))
+    (write (++ "You have harvested " (->string (city :yield)) " bushels per acre."))
+    (write (++ "Rats ate " (->string (city :pests)) " bushels.\n"))
+    (write (++ "You now have " (->string (city :bushels)) " bushels in store."))
+    (write (++ "Land is trading at " (->string (city :val)) " bushels per acre."))
+
+    (let buy-acres ((buy (reline "How many acres do you wish to buy? ")))
+      (cond ((< buy 0) (storm-out))
+            ((= buy 0) (nil))
+            (else
+              (let ((res (city:buy-acres city buy)))
+                (if (city:error? res)
+                  (begin
+                    (write (++ "Hamurabi: Think again. You have only "
+                               (->string (city :bushels))
+                               " bushels of grain. Now then,"))
+                    (buy-acres (reline "How many acres do you wish to buy? ")))
+                  (set! city res))))))
+
+    (let sell-acres ((sell (reline "How many acres do you wish to sell?")))
+      (cond ((< sell 0) (storm-out))
+              ((= sell 0) (nil))
+              (else
+                (let ((res (city:sell-acres city sell)))
+                  (if (city:error? res)
+                    (begin
+                      (write (++ "Hamurabi: Think again. You have only "
+                                 (->string (city :acres)) " acres. Now then,"))
+                      (sell-acres (reline "How many acres do you wish to sell? ")))
+                    (set! city res))))))
+
+    (let ((feed-str (++ "How many bushels do you wish to feed your people?\n"
+                        "(No starvation: " (->string (* 20 (city :population)))
+                        " bushels.) ")))
+      (let feed-people ((fed (reline feed-str)))
+        (cond ((< fed 0) (storm-out))
+              ((= fed 0) (nil))
+              (else
+                (let ((res (city:feed-populace city fed)))
+                  (if (city:error? res)
+                    (begin
+                      (write (++ "Hamurabi: Think again. You have only "
+                                 (->string (city :bushels)) " bushels. Now then,"))
+                      (feed-people (reline feed-str)))
+                    (set! city res)))))))
+
+    (let ((plant-str (++ "How many acres do you wish to plant with seed?\n"
+                         "(MAX: " (->string (* 10 (city :population))) " acres) ")))
+      (let plant-seed ((plt (reline plant-str)))
+        (cond ((< plt 0) (storm-out))
+              ((= plt 0) (nil))
+              (else
+                (case (city:plant-seed city plt)
+                  ((2)
+                    (begin
+                      (write (++ "Hamurabi: Think again. You have only "
+                                 (->string (city :acres)) " acres. Now then, "))
+                      (plant-seed (reline plant-str))))
+                  ((3)
+                    (begin
+                      (write (++ "But you only have "
+                                 (->string (city :population))
+                                 " people to tend the fields. Now then, "))
+                      (plant-seed (reline plant-str))))
+                  ((0)
+                    (begin
+                      (write (++ "Hamurabi: Think again. We only have "
+                                 (->string (city :bushels))
+                                 " bushels. Now then, "))
+                      (plant-seed (reline plant-str))))
+                  (else => ($ (set! city %))))))))
+
+    (let ((res (city:step city)))
+      (if (city:starved? res)
         (begin
-          (write "A horrible plague struck! Many people have died!")
-          (set! city (city:plague city))))
-
-      (write (++ "\nPopulation is now " (->string (city :population)) "."))
-      (write (++ "The city now owns " (->string (city :acres)) " acres."))
-      (write (++ "You have harvested " (->string (city :yield)) " bushels per acre."))
-      (write (++ "Rats ate " (->string (city :pests)) " bushels.\n"))
-      (write (++ "You now have " (->string (city :bushels)) " bushels in store."))
-      (write (++ "Land is trading at " (->string (city :val)) " bushels per acre."))
-
-      (let buy-acres ((buy (reline "How many acres do you wish to buy? ")))
-        (begin
-          (cond ((< buy 0) (storm-out))
-                ((= buy 0) (nil))
-                (else
-                  (let ((res (city:buy-acres city buy)))
-                    (if (city:error? res)
-                      (begin
-                        (write (++ "Hamurabi: Think again. You have only "
-                                   (->string (city :bushels))
-                                   " bushels of grain. Now then,"))
-                        (buy-acres (reline "How many acres do you wish to buy? ")))
-                      (set! city res)))))))
-
-      (let sell-acres ((sell (reline "How many acres do you wish to sell?")))
-        (begin
-          (cond ((< sell 0) (storm-out))
-                ((= sell 0) (nil))
-                (else
-                  (let ((res (city:sell-acres city sell)))
-                    (if (city:error? res)
-                      (begin
-                        (write (++ "Hamurabi: Think again. You have only "
-                                   (->string (city :acres)) " acres. Now then,"))
-                        (sell-acres (reline "How many acres do you wish to sell? ")))
-                      (set! city res)))))))
-
-      (let ((feed-str (++ "How many bushels do you wish to feed your people?\n"
-                          "(No starvation: " (->string (* 20 (city :population)))
-                          " bushels.) ")))
-        (let feed-people ((fed (reline feed-str)))
-          (begin
-            (cond ((< fed 0) (storm-out))
-                  ((= fed 0) (nil))
-                  (else
-                    (let ((res (city:feed-populace city fed)))
-                      (if (city:error? res)
-                        (begin
-                          (write (++ "Hamurabi: Think again. You have only "
-                                     (->string (city :bushels)) " bushels. Now then,"))
-                          (feed-people (reline feed-str)))
-                        (set! city res))))))))
-
-      (let ((plant-str (++ "How many acres do you wish to plant with seed?\n"
-                           "(MAX: " (->string (* 10 (city :population))) " acres) ")))
-        (let plant-seed ((plt (reline plant-str)))
-          (begin
-            (cond ((< plt 0) (storm-out))
-                  ((= plt 0) (nil))
-                  (else
-                    (case (city:plant-seed city plt)
-                      ((2)
-                        (begin
-                          (write (++ "Hamurabi: Think again. You have only "
-                                     (->string (city :acres)) " acres. Now then, "))
-                          (plant-seed (reline plant-str))))
-                      ((3)
-                        (begin
-                          (write (++ "But you only have "
-                                     (->string (city :population))
-                                     " people to tend the fields. Now then, "))
-                          (plant-seed (reline plant-str))))
-                      ((0)
-                        (begin
-                          (write (++ "Hamurabi: Think again. We only have "
-                                     (->string (city :bushels))
-                                     " bushels. Now then, "))
-                          (plant-seed (reline plant-str))))
-                      (else => ($ (set! city %)))))))))
-
-      (let ((res (city:step city)))
-        (if (city:starved? res)
-          (begin
-            (write (++ "You starved " (->string (res :starved)) " people in one year!!!"))
-            (ejected))
-          (loop res (add1 year)))))))
+          (write (++ "You starved " (->string (res :starved)) " people in one year!!!"))
+          (ejected))
+        (loop res (add1 year))))))
 
 (main)
